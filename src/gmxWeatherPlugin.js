@@ -82,7 +82,7 @@ var gmxWeatherPlugin = function (options) {
     };
     var getData = function (params) {
         if (!params) params = {};
-        gmxAPIutils.requestJSONP(
+        L.gmxUtil.requestJSONP(
             weatherURL, 
             {
                 WrapStyle: 'func',
