@@ -26,13 +26,14 @@ var gmxWeatherPlugin = function (options) {
     var layer = null,
         weatherURL = options.weatherURL || "http://maps.kosmosnimki.ru/Weather.ashx",
         imagesHost = options.imagesHost || "http://maps.kosmosnimki.ru/api/img/weather/",
-        attributes = ['Name', 'Lat', 'Lng', 'Forecast', 'Error', 'icon']
+        attributes = ['Name', 'Lat', 'Lng', 'Forecast', 'Error', 'angle', 'scale', 'color', 'icon']
         styles = [];
     for (var i = 0; i < 9; i++) {
         styles.push({
-            MinZoom:1, MaxZoom:21, BalloonEnable:true, DisableBalloonOnClick:false, DisableBalloonOnMouseMove:true
-            ,Filter: '"icon"=' + i
-            ,RenderStyle:{
+            MinZoom:1, MaxZoom:21, 
+            DisableBalloonOnMouseMove: false,
+            Filter: '"icon"=' + i,
+            RenderStyle:{
                 marker:{
                     image: imagesHost + '24/' + i + '.png',
                     center: true
@@ -40,13 +41,31 @@ var gmxWeatherPlugin = function (options) {
             }
         });
     }
-    
+    styles.push({
+        MinZoom:1, MaxZoom:21, 
+        DisableBalloonOnMouseMove: false,
+        RenderStyle:{
+            marker:{
+                image: imagesHost + 'wind.png',
+                angle: '[angle]',
+                color: '[color]',
+                scale: '[scale]',
+                center: true
+            }
+        }
+    });
+
     var info = {
         properties: {
-            type: 'Vector'
-            ,GeometryType: 'point'
-            ,attributes: attributes
-            ,styles: styles
+            type: 'Vector',
+            GeometryType: 'point',
+            attributes: attributes,
+            styles: styles,
+            MetaProperties: {
+                multiFilters: {
+                    Value: '1'
+                }
+            }
         }
     };
     var data = null;
@@ -58,6 +77,9 @@ var gmxWeatherPlugin = function (options) {
                 continue;
             var forecast = it.Forecast,
                 icon = 0,
+                angle = 0,
+                scale = 1,
+                color = 0xff0000,
                 latlng = L.latLng(it.Lat, it.Lng),
                 merc = L.Projection.Mercator.project(latlng);
 
@@ -66,7 +88,29 @@ var gmxWeatherPlugin = function (options) {
                     ? forecast[0].Precipitation
                     : forecast[0].Cloudiness
                 ;
+                angle = forecast[0].WindDirection * 45;
+                var wind = Math.floor((forecast[0].WindMax + forecast[0].WindMin) / 2);
+                if (wind <= 4) {
+                    color = 0x003fe0;
+                    scale = 0.5;
+                } else if (wind <= 8) {
+                    color = 0x05cdff;
+                    scale = 0.6;
+                } else if (wind <= 12) {
+                    color = 0x00f7b1;
+                    scale = 0.7;
+                } else if (wind <= 16) {
+                    color = 0x7dfa00;
+                    scale = 0.8;
+                } else if (wind <= 20) {
+                    color = 0xeeff00;
+                    scale = 0.8;
+                } else {
+                    color = 0xfc0d00;
+                    scale = 1;
+                }
             }
+
             data.push([
                it.Id,
                it.Name,
@@ -74,6 +118,9 @@ var gmxWeatherPlugin = function (options) {
                it.Lng,
                it.Forecast,
                it.Error,
+               angle,
+               scale,
+               color,
                icon,
                {type:'POINT', coordinates: [merc.x, merc.y]}
             ]);
